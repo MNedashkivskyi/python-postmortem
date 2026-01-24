@@ -1,25 +1,213 @@
-import { History } from 'lucide-react'
-import { PageContainer } from '@/components/layout/page-container'
-import { HistoryList } from '@/components/history/history-list'
+"use client"
+
+import { useState, useEffect, useMemo } from "react"
+import Link from "next/link"
+import { Button } from "@/components/ui/button"
+import { Input } from "@/components/ui/input"
+import { Card } from "@/components/ui/card"
+import { Badge } from "@/components/ui/badge"
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
+import { api } from "@/services/api"
+import { Postmortem } from "@/types/postmortem"
+import { formatDate } from "@/lib/utils"
+
+type SortOrder = "asc" | "desc" | null
+
+const severityOrder: Record<string, number> = {
+  SEV1: 1,
+  SEV2: 2,
+  SEV3: 3,
+  SEV4: 4,
+}
 
 export default function HistoryPage() {
+  const [search, setSearch] = useState("")
+  const [postmortems, setPostmortems] = useState<Postmortem[]>([])
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
+  const [dateSortOrder, setDateSortOrder] = useState<SortOrder>("desc")
+  const [severitySortOrder, setSeveritySortOrder] = useState<SortOrder>(null)
+
+  const handleDateSort = () => {
+    if (dateSortOrder === null) {
+      setDateSortOrder("desc")
+    } else if (dateSortOrder === "desc") {
+      setDateSortOrder("asc")
+    } else {
+      setDateSortOrder(null)
+    }
+  }
+
+  const handleSeveritySort = () => {
+    if (severitySortOrder === null) {
+      setSeveritySortOrder("desc")
+    } else if (severitySortOrder === "desc") {
+      setSeveritySortOrder("asc")
+    } else {
+      setSeveritySortOrder(null)
+    }
+  }
+
+  const SortIcon = ({ order }: { order: SortOrder }) => {
+    if (order === null) {
+      return <span className="ml-1 text-muted-foreground/50">↕</span>
+    }
+    return <span className="ml-1">{order === "asc" ? "↑" : "↓"}</span>
+  }
+
+  useEffect(() => {
+    const fetchPostmortems = async () => {
+      setLoading(true)
+      setError(null)
+
+      try {
+        const response = await api.listPostmortems(1, 50, search || undefined)
+        setPostmortems(response.items)
+      } catch (err) {
+        setError(err instanceof Error ? err.message : "Failed to load postmortems")
+      } finally {
+        setLoading(false)
+      }
+    }
+
+    // Debounce search
+    const timeoutId = setTimeout(fetchPostmortems, 300)
+    return () => clearTimeout(timeoutId)
+  }, [search])
+
+  const sortedPostmortems = useMemo(() => {
+    return [...postmortems].sort((a, b) => {
+      // Primary sort by date if enabled
+      if (dateSortOrder !== null) {
+        const dateComparison = new Date(a.incidentDate).getTime() - new Date(b.incidentDate).getTime()
+        const dateResult = dateSortOrder === "asc" ? dateComparison : -dateComparison
+        if (dateResult !== 0) return dateResult
+      }
+
+      // Secondary sort by severity if enabled
+      if (severitySortOrder !== null) {
+        const severityComparison = severityOrder[a.severity] - severityOrder[b.severity]
+        const severityResult = severitySortOrder === "asc" ? severityComparison : -severityComparison
+        if (severityResult !== 0) return severityResult
+      }
+
+      return 0
+    })
+  }, [postmortems, dateSortOrder, severitySortOrder])
+
+  const severityColor: Record<string, string> = {
+    SEV1: "bg-red-500/20 text-red-400 border-red-500/50",
+    SEV2: "bg-orange-500/20 text-orange-400 border-orange-500/50",
+    SEV3: "bg-yellow-500/20 text-yellow-400 border-yellow-500/50",
+    SEV4: "bg-blue-500/20 text-blue-400 border-blue-500/50",
+  }
+
+  const statusColor: Record<string, string> = {
+    completed: "bg-green-500/20 text-green-400 border-green-500/50",
+    draft: "bg-gray-500/20 text-gray-400 border-gray-500/50",
+    generating: "bg-blue-500/20 text-blue-400 border-blue-500/50",
+    failed: "bg-red-500/20 text-red-400 border-red-500/50",
+  }
+
   return (
-    <PageContainer className="max-w-4xl">
-      <div className="space-y-6">
-        {/* Page Header */}
+    <div className="max-w-6xl mx-auto">
+      <div className="flex items-center justify-between mb-8">
         <div>
-          <h1 className="text-2xl font-bold text-primary flex items-center gap-2 mb-2">
-            <History className="h-6 w-6" />
-            <span className="text-primary">{'>'}</span> Postmortem History
-          </h1>
+          <h1 className="text-2xl font-bold text-primary mb-2">&gt; Postmortem History</h1>
           <p className="text-muted-foreground">
-            View and search your past incident postmortems.
+            View and manage all generated postmortem documents.
           </p>
         </div>
-
-        {/* History List */}
-        <HistoryList />
+        <Link href="/">
+          <Button>New Postmortem</Button>
+        </Link>
       </div>
-    </PageContainer>
+
+      {error && (
+        <Card className="p-4 mb-6 border-red-500 bg-red-500/10">
+          <p className="text-red-400">{error}</p>
+        </Card>
+      )}
+
+      <Card className="p-6">
+        <div className="flex items-center gap-4 mb-6">
+          <Input
+            placeholder="Search postmortems..."
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            className="max-w-sm"
+          />
+        </div>
+
+        {loading ? (
+          <div className="text-center py-12 text-muted-foreground">
+            Loading postmortems...
+          </div>
+        ) : (
+          <>
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Title</TableHead>
+                  <TableHead>
+                    <button
+                      onClick={handleDateSort}
+                      className="flex items-center hover:text-primary transition-colors"
+                    >
+                      Date
+                      <SortIcon order={dateSortOrder} />
+                    </button>
+                  </TableHead>
+                  <TableHead>
+                    <button
+                      onClick={handleSeveritySort}
+                      className="flex items-center hover:text-primary transition-colors"
+                    >
+                      Severity
+                      <SortIcon order={severitySortOrder} />
+                    </button>
+                  </TableHead>
+                  <TableHead>Status</TableHead>
+                  <TableHead className="text-right">Actions</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {sortedPostmortems.map((postmortem) => (
+                  <TableRow key={postmortem.id}>
+                    <TableCell className="font-medium">
+                      <Link href={`/postmortem/${postmortem.id}`} className="hover:text-primary">
+                        {postmortem.title}
+                      </Link>
+                    </TableCell>
+                    <TableCell>{formatDate(postmortem.incidentDate)}</TableCell>
+                    <TableCell>
+                      <Badge className={severityColor[postmortem.severity] || ""}>
+                        {postmortem.severity}
+                      </Badge>
+                    </TableCell>
+                    <TableCell>
+                      <Badge className={statusColor[postmortem.status] || ""}>
+                        {postmortem.status}
+                      </Badge>
+                    </TableCell>
+                    <TableCell className="text-right">
+                      <Link href={`/postmortem/${postmortem.id}`}>
+                        <Button variant="outline" size="sm">View</Button>
+                      </Link>
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+
+            {sortedPostmortems.length === 0 && (
+              <div className="text-center py-12 text-muted-foreground">
+                {search ? "No postmortems found matching your search." : "No postmortems yet. Create your first one!"}
+              </div>
+            )}
+          </>
+        )}
+      </Card>
+    </div>
   )
 }

@@ -4,42 +4,26 @@
 
 @layer base {
   :root {
-    /* Popmelt "Term" Theme - Dark Terminal Style */
-    --background: 120 33% 2%;           /* #050805 */
-    --foreground: 120 50% 92%;          /* #D9FFD9 */
-
-    --card: 120 50% 4%;                 /* #071107 */
-    --card-foreground: 120 50% 92%;    /* #D9FFD9 */
-
-    --popover: 120 50% 4%;              /* #071107 */
-    --popover-foreground: 120 50% 92%; /* #D9FFD9 */
-
-    --primary: 110 100% 55%;            /* #39FF14 - Neon green */
-    --primary-foreground: 120 33% 2%;  /* #050805 */
-
-    --secondary: 120 33% 6%;            /* Slightly lighter than bg */
+    --background: 120 33% 2%;
+    --foreground: 120 50% 92%;
+    --card: 120 50% 4%;
+    --card-foreground: 120 50% 92%;
+    --popover: 120 50% 4%;
+    --popover-foreground: 120 50% 92%;
+    --primary: 110 100% 55%;
+    --primary-foreground: 120 33% 2%;
+    --secondary: 120 30% 12%;
     --secondary-foreground: 120 50% 92%;
-
-    --accent: 75 100% 50%;              /* #B6FF00 - Yellow-green */
+    --muted: 120 30% 12%;
+    --muted-foreground: 120 30% 59%;
+    --accent: 75 100% 50%;
     --accent-foreground: 120 33% 2%;
-
-    --muted: 120 20% 12%;               /* Subtle muted */
-    --muted-foreground: 120 30% 59%;   /* #7FAF7F */
-
-    --destructive: 0 100% 62%;          /* #FF3B3B */
-    --destructive-foreground: 0 0% 100%;
-
-    --border: 120 45% 21%;              /* #1D4D1D */
-    --input: 120 45% 21%;               /* #1D4D1D */
-    --ring: 110 100% 55%;               /* #39FF14 */
-
+    --destructive: 0 100% 62%;
+    --destructive-foreground: 120 50% 92%;
+    --border: 120 45% 21%;
+    --input: 120 45% 21%;
+    --ring: 110 100% 55%;
     --radius: 0.25rem;
-
-    /* Severity colors */
-    --sev1: 0 100% 62%;                 /* #FF3B3B - Red */
-    --sev2: 30 100% 50%;                /* #FF9500 - Orange */
-    --sev3: 50 100% 52%;                /* #FFD60A - Yellow */
-    --sev4: 110 100% 55%;               /* #39FF14 - Green */
   }
 }
 
@@ -47,42 +31,13 @@
   * {
     @apply border-border;
   }
-
   body {
-    @apply bg-background text-foreground font-mono antialiased;
+    @apply bg-background text-foreground font-mono;
     font-feature-settings: "rlig" 1, "calt" 1;
   }
-
-  /* Disable all transitions/animations per design spec - instant feedback */
-  *, *::before, *::after {
-    transition: none !important;
-    animation-duration: 0s !important;
-  }
 }
 
-/* Terminal cursor blink - exception for terminal effect */
-@keyframes blink {
-  0%, 50% { opacity: 1; }
-  51%, 100% { opacity: 0; }
-}
-
-.terminal-cursor {
-  animation: blink 1s step-end infinite !important;
-}
-
-/* Terminal typing effect for generation progress */
-@keyframes typing {
-  from { width: 0; }
-  to { width: 100%; }
-}
-
-.terminal-typing {
-  overflow: hidden;
-  white-space: nowrap;
-  animation: typing 0.5s steps(40, end) !important;
-}
-
-/* Custom scrollbar for terminal aesthetic */
+/* Terminal-style scrollbar */
 ::-webkit-scrollbar {
   width: 8px;
   height: 8px;
@@ -94,41 +49,54 @@
 
 ::-webkit-scrollbar-thumb {
   background: hsl(var(--border));
-  border-radius: var(--radius);
+  border-radius: 4px;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: hsl(var(--primary) / 0.5);
+  background: hsl(var(--muted-foreground));
 }
 
-/* Selection styling */
-::selection {
-  background: hsl(var(--primary) / 0.3);
-  color: hsl(var(--foreground));
+/* Terminal cursor blink effect */
+@keyframes blink {
+  0%, 50% { opacity: 1; }
+  51%, 100% { opacity: 0; }
 }
 
-/* Focus visible styling */
-:focus-visible {
-  outline: 2px solid hsl(var(--primary));
-  outline-offset: 2px;
+.cursor-blink {
+  animation: blink 1s step-end infinite;
 }
 
-/* Utility classes for terminal aesthetic */
-@layer utilities {
-  .text-glow {
-    text-shadow: 0 0 10px hsl(var(--primary) / 0.5);
-  }
+/* Glow effects */
+.glow {
+  box-shadow: 0 0 10px hsl(var(--primary) / 0.3);
+}
 
-  .text-glow-accent {
-    text-shadow: 0 0 10px hsl(var(--accent) / 0.5);
-  }
+.glow-lg {
+  box-shadow: 0 0 20px hsl(var(--primary) / 0.4);
+}
 
-  .border-glow {
-    box-shadow: 0 0 10px hsl(var(--primary) / 0.3), inset 0 0 10px hsl(var(--primary) / 0.1);
-  }
+.glow-accent {
+  box-shadow: 0 0 10px hsl(var(--accent) / 0.3);
+}
 
-  .card-terminal {
-    @apply bg-card border border-border rounded-lg;
-    box-shadow: 0 10px 20px rgba(0,0,0,0.7), 0 0 0 1px rgba(57,255,20,0.2), 0 0 18px rgba(57,255,20,0.12);
-  }
+/* Terminal window shadow */
+.terminal-shadow {
+  box-shadow: 0 10px 20px rgba(0,0,0,0.7), 0 0 0 1px rgba(57,255,20,0.2), 0 0 18px rgba(57,255,20,0.12);
+}
+
+/* Severity colors */
+.severity-sev1 {
+  @apply text-[#FF3B3B] border-[#FF3B3B];
+}
+
+.severity-sev2 {
+  @apply text-[#FF9500] border-[#FF9500];
+}
+
+.severity-sev3 {
+  @apply text-[#FFD60A] border-[#FFD60A];
+}
+
+.severity-sev4 {
+  @apply text-primary border-primary;
 }

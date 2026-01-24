@@ -1,24 +1,20 @@
 import * as React from "react"
 import { cva, type VariantProps } from "class-variance-authority"
-
 import { cn } from "@/lib/utils"
 
 const badgeVariants = cva(
-  "inline-flex items-center rounded-md border px-2.5 py-0.5 text-xs font-semibold font-mono",
+  "inline-flex items-center rounded-full border px-2.5 py-0.5 text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2",
   {
     variants: {
       variant: {
-        default:
-          "border-transparent bg-primary text-primary-foreground",
-        secondary:
-          "border-transparent bg-secondary text-secondary-foreground",
-        destructive:
-          "border-transparent bg-destructive text-destructive-foreground",
-        outline: "text-foreground border-border",
-        sev1: "border-transparent bg-[hsl(var(--sev1))] text-white",
-        sev2: "border-transparent bg-[hsl(var(--sev2))] text-black",
-        sev3: "border-transparent bg-[hsl(var(--sev3))] text-black",
-        sev4: "border-transparent bg-[hsl(var(--sev4))] text-black",
+        default: "border-transparent bg-primary text-primary-foreground",
+        secondary: "border-transparent bg-secondary text-secondary-foreground",
+        destructive: "border-transparent bg-destructive text-destructive-foreground",
+        outline: "text-foreground",
+        sev1: "border-[#FF3B3B] bg-[#FF3B3B]/10 text-[#FF3B3B]",
+        sev2: "border-[#FF9500] bg-[#FF9500]/10 text-[#FF9500]",
+        sev3: "border-[#FFD60A] bg-[#FFD60A]/10 text-[#FFD60A]",
+        sev4: "border-primary bg-primary/10 text-primary",
       },
     },
     defaultVariants: {

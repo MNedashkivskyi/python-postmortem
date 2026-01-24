@@ -1,7 +1,6 @@
 version: "3.9"
 
 services:
-  # PostgreSQL Database
   db:
     image: postgres:16-alpine
     container_name: postmortem-db
@@ -20,7 +19,6 @@ services:
       timeout: 5s
       retries: 5
 
-  # Redis for Celery broker and cache
   redis:
     image: redis:7-alpine
     container_name: postmortem-redis
@@ -36,7 +34,6 @@ services:
       timeout: 5s
       retries: 5
 
-  # FastAPI Backend
   backend:
     build:
       context: ./backend
@@ -61,7 +58,6 @@ services:
         condition: service_healthy
     command: uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
 
-  # Celery Worker
   celery-worker:
     build:
       context: ./backend
@@ -84,7 +80,6 @@ services:
         condition: service_healthy
     command: celery -A app.core.celery_app.celery worker --loglevel=info
 
-  # Flower (Celery monitoring)
   flower:
     build:
       context: ./backend
@@ -100,7 +95,6 @@ services:
       - celery-worker
     command: celery -A app.core.celery_app.celery flower --port=5555
 
-  # Next.js Frontend
   frontend:
     build:
       context: ./frontend
@@ -118,7 +112,6 @@ services:
       - "3000:3000"
     depends_on:
       - backend
-    command: npm run dev
 
 volumes:
   postgres_data:
