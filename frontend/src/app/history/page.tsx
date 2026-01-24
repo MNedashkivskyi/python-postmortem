@@ -7,12 +7,11 @@ import { Input } from "@/components/ui/input"
 import { Card } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { api } from "@/services/api"
 import { Postmortem } from "@/types/postmortem"
 import { formatDate } from "@/lib/utils"
 
-type SortField = "date" | "severity"
+type SortField = "date" | "severity" | null
 type SortOrder = "asc" | "desc"
 
 const severityOrder: Record<string, number> = {
@@ -29,6 +28,22 @@ export default function HistoryPage() {
   const [error, setError] = useState<string | null>(null)
   const [sortField, setSortField] = useState<SortField>("date")
   const [sortOrder, setSortOrder] = useState<SortOrder>("desc")
+
+  const handleSort = (field: "date" | "severity") => {
+    if (sortField === field) {
+      setSortOrder(sortOrder === "asc" ? "desc" : "asc")
+    } else {
+      setSortField(field)
+      setSortOrder("desc")
+    }
+  }
+
+  const SortIcon = ({ field }: { field: "date" | "severity" }) => {
+    if (sortField !== field) {
+      return <span className="ml-1 text-muted-foreground/50">↕</span>
+    }
+    return <span className="ml-1">{sortOrder === "asc" ? "↑" : "↓"}</span>
+  }
 
   useEffect(() => {
     const fetchPostmortems = async () => {
@@ -106,27 +121,6 @@ export default function HistoryPage() {
             onChange={(e) => setSearch(e.target.value)}
             className="max-w-sm"
           />
-          <div className="flex items-center gap-2 ml-auto">
-            <span className="text-sm text-muted-foreground">Sort by:</span>
-            <Select value={sortField} onValueChange={(value: SortField) => setSortField(value)}>
-              <SelectTrigger className="w-32">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="date">Date</SelectItem>
-                <SelectItem value="severity">Severity</SelectItem>
-              </SelectContent>
-            </Select>
-            <Select value={sortOrder} onValueChange={(value: SortOrder) => setSortOrder(value)}>
-              <SelectTrigger className="w-32">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="desc">Descending</SelectItem>
-                <SelectItem value="asc">Ascending</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
         </div>
 
         {loading ? (
@@ -139,8 +133,24 @@ export default function HistoryPage() {
               <TableHeader>
                 <TableRow>
                   <TableHead>Title</TableHead>
-                  <TableHead>Date</TableHead>
-                  <TableHead>Severity</TableHead>
+                  <TableHead>
+                    <button
+                      onClick={() => handleSort("date")}
+                      className="flex items-center hover:text-primary transition-colors"
+                    >
+                      Date
+                      <SortIcon field="date" />
+                    </button>
+                  </TableHead>
+                  <TableHead>
+                    <button
+                      onClick={() => handleSort("severity")}
+                      className="flex items-center hover:text-primary transition-colors"
+                    >
+                      Severity
+                      <SortIcon field="severity" />
+                    </button>
+                  </TableHead>
                   <TableHead>Status</TableHead>
                   <TableHead className="text-right">Actions</TableHead>
                 </TableRow>
