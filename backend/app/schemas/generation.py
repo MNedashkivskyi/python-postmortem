@@ -7,6 +7,7 @@ from pydantic import BaseModel, Field
 class GenerationStatusType(str, Enum):
     PENDING = "pending"
     PROCESSING = "processing"
+    GENERATING = "generating"
     COMPLETED = "completed"
     FAILED = "failed"
 
