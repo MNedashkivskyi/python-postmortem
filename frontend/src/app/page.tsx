@@ -128,6 +128,7 @@ export default function HomePage() {
                 type="date"
                 value={formData.incidentDate}
                 onChange={(e) => setFormData({ ...formData, incidentDate: e.target.value })}
+                max={new Date().toISOString().split("T")[0]}
                 required
                 disabled={isGenerating}
               />
