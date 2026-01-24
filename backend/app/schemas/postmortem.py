@@ -35,6 +35,7 @@ class ActionItemPriority(str, Enum):
 
 class ActionItemStatus(str, Enum):
     OPEN = "open"
+    PENDING = "pending"
     IN_PROGRESS = "in_progress"
     COMPLETED = "completed"
     CANCELLED = "cancelled"
