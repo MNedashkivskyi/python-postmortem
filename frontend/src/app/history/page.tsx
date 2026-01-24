@@ -1,22 +1,41 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import Link from "next/link"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Card } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
-import { getAllPostmortems } from "@/services/mock-data"
+import { api } from "@/services/api"
+import { Postmortem } from "@/types/postmortem"
 import { formatDate, formatDuration } from "@/lib/utils"
 
 export default function HistoryPage() {
   const [search, setSearch] = useState("")
-  const postmortems = getAllPostmortems()
+  const [postmortems, setPostmortems] = useState<Postmortem[]>([])
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
 
-  const filteredPostmortems = postmortems.filter((p) =>
-    p.title.toLowerCase().includes(search.toLowerCase())
-  )
+  useEffect(() => {
+    const fetchPostmortems = async () => {
+      setLoading(true)
+      setError(null)
+
+      try {
+        const response = await api.listPostmortems(1, 50, search || undefined)
+        setPostmortems(response.items)
+      } catch (err) {
+        setError(err instanceof Error ? err.message : "Failed to load postmortems")
+      } finally {
+        setLoading(false)
+      }
+    }
+
+    // Debounce search
+    const timeoutId = setTimeout(fetchPostmortems, 300)
+    return () => clearTimeout(timeoutId)
+  }, [search])
 
   const severityColor: Record<string, string> = {
     SEV1: "bg-red-500/20 text-red-400 border-red-500/50",
@@ -28,7 +47,8 @@ export default function HistoryPage() {
   const statusColor: Record<string, string> = {
     completed: "bg-green-500/20 text-green-400 border-green-500/50",
     draft: "bg-gray-500/20 text-gray-400 border-gray-500/50",
-    in_progress: "bg-blue-500/20 text-blue-400 border-blue-500/50",
+    generating: "bg-blue-500/20 text-blue-400 border-blue-500/50",
+    failed: "bg-red-500/20 text-red-400 border-red-500/50",
   }
 
   return (
@@ -45,6 +65,12 @@ export default function HistoryPage() {
         </Link>
       </div>
 
+      {error && (
+        <Card className="p-4 mb-6 border-red-500 bg-red-500/10">
+          <p className="text-red-400">{error}</p>
+        </Card>
+      )}
+
       <Card className="p-6">
         <div className="flex items-center gap-4 mb-6">
           <Input
@@ -55,51 +81,59 @@ export default function HistoryPage() {
           />
         </div>
 
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead>Title</TableHead>
-              <TableHead>Date</TableHead>
-              <TableHead>Severity</TableHead>
-              <TableHead>Duration</TableHead>
-              <TableHead>Status</TableHead>
-              <TableHead className="text-right">Actions</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {filteredPostmortems.map((postmortem) => (
-              <TableRow key={postmortem.id}>
-                <TableCell className="font-medium">
-                  <Link href={`/postmortem/${postmortem.id}`} className="hover:text-primary">
-                    {postmortem.title}
-                  </Link>
-                </TableCell>
-                <TableCell>{formatDate(postmortem.incidentDate)}</TableCell>
-                <TableCell>
-                  <Badge className={severityColor[postmortem.severity]}>
-                    {postmortem.severity}
-                  </Badge>
-                </TableCell>
-                <TableCell>{formatDuration(postmortem.duration)}</TableCell>
-                <TableCell>
-                  <Badge className={statusColor[postmortem.status]}>
-                    {postmortem.status}
-                  </Badge>
-                </TableCell>
-                <TableCell className="text-right">
-                  <Link href={`/postmortem/${postmortem.id}`}>
-                    <Button variant="outline" size="sm">View</Button>
-                  </Link>
-                </TableCell>
-              </TableRow>
-            ))}
-          </TableBody>
-        </Table>
-
-        {filteredPostmortems.length === 0 && (
+        {loading ? (
           <div className="text-center py-12 text-muted-foreground">
-            No postmortems found matching your search.
+            Loading postmortems...
           </div>
+        ) : (
+          <>
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Title</TableHead>
+                  <TableHead>Date</TableHead>
+                  <TableHead>Severity</TableHead>
+                  <TableHead>Duration</TableHead>
+                  <TableHead>Status</TableHead>
+                  <TableHead className="text-right">Actions</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {postmortems.map((postmortem) => (
+                  <TableRow key={postmortem.id}>
+                    <TableCell className="font-medium">
+                      <Link href={`/postmortem/${postmortem.id}`} className="hover:text-primary">
+                        {postmortem.title}
+                      </Link>
+                    </TableCell>
+                    <TableCell>{formatDate(postmortem.incidentDate)}</TableCell>
+                    <TableCell>
+                      <Badge className={severityColor[postmortem.severity] || ""}>
+                        {postmortem.severity}
+                      </Badge>
+                    </TableCell>
+                    <TableCell>{postmortem.duration ? formatDuration(postmortem.duration) : "-"}</TableCell>
+                    <TableCell>
+                      <Badge className={statusColor[postmortem.status] || ""}>
+                        {postmortem.status}
+                      </Badge>
+                    </TableCell>
+                    <TableCell className="text-right">
+                      <Link href={`/postmortem/${postmortem.id}`}>
+                        <Button variant="outline" size="sm">View</Button>
+                      </Link>
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+
+            {postmortems.length === 0 && (
+              <div className="text-center py-12 text-muted-foreground">
+                {search ? "No postmortems found matching your search." : "No postmortems yet. Create your first one!"}
+              </div>
+            )}
+          </>
         )}
       </Card>
     </div>

@@ -7,21 +7,38 @@ import { Card } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
-import { getPostmortemById } from "@/services/mock-data"
+import { api } from "@/services/api"
 import { Postmortem } from "@/types/postmortem"
 import { formatDate, formatDuration } from "@/lib/utils"
 
 export default function PostmortemPage() {
   const params = useParams()
   const [postmortem, setPostmortem] = useState<Postmortem | null>(null)
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
   const [copied, setCopied] = useState(false)
 
   useEffect(() => {
-    const id = params.id as string
-    const data = getPostmortemById(id)
-    if (data) {
-      setPostmortem(data)
+    const fetchPostmortem = async () => {
+      const id = params.id as string
+      setLoading(true)
+      setError(null)
+
+      try {
+        const data = await api.getPostmortem(id)
+        if (data) {
+          setPostmortem(data)
+        } else {
+          setError("Postmortem not found")
+        }
+      } catch (err) {
+        setError(err instanceof Error ? err.message : "Failed to load postmortem")
+      } finally {
+        setLoading(false)
+      }
     }
+
+    fetchPostmortem()
   }, [params.id])
 
   const handleCopyToClipboard = () => {
@@ -33,10 +50,28 @@ export default function PostmortemPage() {
     setTimeout(() => setCopied(false), 2000)
   }
 
-  if (!postmortem) {
+  if (loading) {
     return (
       <div className="flex items-center justify-center min-h-[400px]">
         <p className="text-muted-foreground">Loading postmortem...</p>
+      </div>
+    )
+  }
+
+  if (error) {
+    return (
+      <div className="flex items-center justify-center min-h-[400px]">
+        <Card className="p-6 border-red-500 bg-red-500/10">
+          <p className="text-red-400">{error}</p>
+        </Card>
+      </div>
+    )
+  }
+
+  if (!postmortem) {
+    return (
+      <div className="flex items-center justify-center min-h-[400px]">
+        <p className="text-muted-foreground">Postmortem not found</p>
       </div>
     )
   }

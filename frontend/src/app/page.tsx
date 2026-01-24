@@ -1,33 +1,74 @@
 "use client"
 
 import { useState } from "react"
+import { useRouter } from "next/navigation"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
 import { Label } from "@/components/ui/label"
 import { Card } from "@/components/ui/card"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import { api } from "@/services/api"
 
 export default function HomePage() {
+  const router = useRouter()
   const [isGenerating, setIsGenerating] = useState(false)
+  const [generationStatus, setGenerationStatus] = useState<string>("")
+  const [progress, setProgress] = useState(0)
+  const [error, setError] = useState<string | null>(null)
   const [formData, setFormData] = useState({
     title: "",
     incidentDate: "",
     severity: "",
-    duration: "",
     slackThread: "",
     logs: "",
     notes: "",
   })
 
+  const pollGenerationStatus = async (taskId: string, postmortemId: string) => {
+    try {
+      const status = await api.getGenerationStatus(taskId)
+      setProgress(status.progress)
+      setGenerationStatus(status.currentStep || "Processing...")
+
+      if (status.status === "completed") {
+        router.push(`/postmortem/${postmortemId}`)
+      } else if (status.status === "failed") {
+        setError(status.error || "Generation failed")
+        setIsGenerating(false)
+      } else {
+        // Continue polling
+        setTimeout(() => pollGenerationStatus(taskId, postmortemId), 1000)
+      }
+    } catch (err) {
+      setError("Failed to check generation status")
+      setIsGenerating(false)
+    }
+  }
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setIsGenerating(true)
+    setError(null)
+    setProgress(0)
+    setGenerationStatus("Starting generation...")
 
-    // Simulate generation - will be replaced with actual API call
-    setTimeout(() => {
-      window.location.href = "/postmortem/demo-1"
-    }, 2000)
+    try {
+      const response = await api.createPostmortem({
+        title: formData.title,
+        severity: formData.severity || "SEV3",
+        incidentDate: formData.incidentDate,
+        slackThread: formData.slackThread,
+        logs: formData.logs,
+        notes: formData.notes,
+      })
+
+      // Start polling for status
+      pollGenerationStatus(response.taskId, response.postmortemId)
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to create postmortem")
+      setIsGenerating(false)
+    }
   }
 
   return (
@@ -38,6 +79,30 @@ export default function HomePage() {
           Enter incident details and let AI generate a comprehensive postmortem document.
         </p>
       </div>
+
+      {error && (
+        <Card className="p-4 mb-6 border-red-500 bg-red-500/10">
+          <p className="text-red-400">{error}</p>
+        </Card>
+      )}
+
+      {isGenerating && (
+        <Card className="p-6 mb-6">
+          <div className="space-y-4">
+            <div className="flex items-center justify-between">
+              <span className="text-primary font-medium">Generating Postmortem</span>
+              <span className="text-muted-foreground">{progress}%</span>
+            </div>
+            <div className="w-full bg-muted rounded-full h-2">
+              <div
+                className="bg-primary h-2 rounded-full transition-all duration-300"
+                style={{ width: `${progress}%` }}
+              />
+            </div>
+            <p className="text-sm text-muted-foreground">{generationStatus}</p>
+          </div>
+        </Card>
+      )}
 
       <form onSubmit={handleSubmit} className="space-y-6">
         <Card className="p-6 space-y-4">
@@ -52,6 +117,7 @@ export default function HomePage() {
                 value={formData.title}
                 onChange={(e) => setFormData({ ...formData, title: e.target.value })}
                 required
+                disabled={isGenerating}
               />
             </div>
 
@@ -63,39 +129,28 @@ export default function HomePage() {
                 value={formData.incidentDate}
                 onChange={(e) => setFormData({ ...formData, incidentDate: e.target.value })}
                 required
+                disabled={isGenerating}
               />
             </div>
           </div>
 
-          <div className="grid grid-cols-2 gap-4">
-            <div className="space-y-2">
-              <Label htmlFor="severity">Severity</Label>
-              <Select
-                value={formData.severity}
-                onValueChange={(value) => setFormData({ ...formData, severity: value })}
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder="Select severity" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="SEV1">SEV1 - Critical</SelectItem>
-                  <SelectItem value="SEV2">SEV2 - High</SelectItem>
-                  <SelectItem value="SEV3">SEV3 - Medium</SelectItem>
-                  <SelectItem value="SEV4">SEV4 - Low</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="duration">Duration (minutes)</Label>
-              <Input
-                id="duration"
-                type="number"
-                placeholder="e.g., 45"
-                value={formData.duration}
-                onChange={(e) => setFormData({ ...formData, duration: e.target.value })}
-              />
-            </div>
+          <div className="space-y-2">
+            <Label htmlFor="severity">Severity</Label>
+            <Select
+              value={formData.severity}
+              onValueChange={(value) => setFormData({ ...formData, severity: value })}
+              disabled={isGenerating}
+            >
+              <SelectTrigger>
+                <SelectValue placeholder="Select severity" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="SEV1">SEV1 - Critical</SelectItem>
+                <SelectItem value="SEV2">SEV2 - High</SelectItem>
+                <SelectItem value="SEV3">SEV3 - Medium</SelectItem>
+                <SelectItem value="SEV4">SEV4 - Low</SelectItem>
+              </SelectContent>
+            </Select>
           </div>
         </Card>
 
@@ -110,6 +165,7 @@ export default function HomePage() {
               value={formData.slackThread}
               onChange={(e) => setFormData({ ...formData, slackThread: e.target.value })}
               rows={6}
+              disabled={isGenerating}
             />
           </div>
 
@@ -121,6 +177,7 @@ export default function HomePage() {
               value={formData.logs}
               onChange={(e) => setFormData({ ...formData, logs: e.target.value })}
               rows={6}
+              disabled={isGenerating}
             />
           </div>
 
@@ -132,19 +189,15 @@ export default function HomePage() {
               value={formData.notes}
               onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
               rows={4}
+              disabled={isGenerating}
             />
           </div>
         </Card>
 
         <div className="flex justify-end gap-4">
-          <Button type="button" variant="outline">
-            Save Draft
-          </Button>
-          <Button type="submit" disabled={isGenerating}>
+          <Button type="submit" disabled={isGenerating || !formData.title || !formData.incidentDate}>
             {isGenerating ? (
-              <>
-                <span className="animate-pulse">Generating...</span>
-              </>
+              <span className="animate-pulse">Generating...</span>
             ) : (
               "Generate Postmortem"
             )}
