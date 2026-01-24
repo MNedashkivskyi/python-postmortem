@@ -1,21 +1,34 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useMemo } from "react"
 import Link from "next/link"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Card } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { api } from "@/services/api"
 import { Postmortem } from "@/types/postmortem"
-import { formatDate, formatDuration } from "@/lib/utils"
+import { formatDate } from "@/lib/utils"
+
+type SortField = "date" | "severity"
+type SortOrder = "asc" | "desc"
+
+const severityOrder: Record<string, number> = {
+  SEV1: 1,
+  SEV2: 2,
+  SEV3: 3,
+  SEV4: 4,
+}
 
 export default function HistoryPage() {
   const [search, setSearch] = useState("")
   const [postmortems, setPostmortems] = useState<Postmortem[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  const [sortField, setSortField] = useState<SortField>("date")
+  const [sortOrder, setSortOrder] = useState<SortOrder>("desc")
 
   useEffect(() => {
     const fetchPostmortems = async () => {
@@ -36,6 +49,20 @@ export default function HistoryPage() {
     const timeoutId = setTimeout(fetchPostmortems, 300)
     return () => clearTimeout(timeoutId)
   }, [search])
+
+  const sortedPostmortems = useMemo(() => {
+    return [...postmortems].sort((a, b) => {
+      let comparison = 0
+
+      if (sortField === "date") {
+        comparison = new Date(a.incidentDate).getTime() - new Date(b.incidentDate).getTime()
+      } else if (sortField === "severity") {
+        comparison = severityOrder[a.severity] - severityOrder[b.severity]
+      }
+
+      return sortOrder === "asc" ? comparison : -comparison
+    })
+  }, [postmortems, sortField, sortOrder])
 
   const severityColor: Record<string, string> = {
     SEV1: "bg-red-500/20 text-red-400 border-red-500/50",
@@ -79,6 +106,27 @@ export default function HistoryPage() {
             onChange={(e) => setSearch(e.target.value)}
             className="max-w-sm"
           />
+          <div className="flex items-center gap-2 ml-auto">
+            <span className="text-sm text-muted-foreground">Sort by:</span>
+            <Select value={sortField} onValueChange={(value: SortField) => setSortField(value)}>
+              <SelectTrigger className="w-32">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="date">Date</SelectItem>
+                <SelectItem value="severity">Severity</SelectItem>
+              </SelectContent>
+            </Select>
+            <Select value={sortOrder} onValueChange={(value: SortOrder) => setSortOrder(value)}>
+              <SelectTrigger className="w-32">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="desc">Descending</SelectItem>
+                <SelectItem value="asc">Ascending</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
         </div>
 
         {loading ? (
@@ -93,13 +141,12 @@ export default function HistoryPage() {
                   <TableHead>Title</TableHead>
                   <TableHead>Date</TableHead>
                   <TableHead>Severity</TableHead>
-                  <TableHead>Duration</TableHead>
                   <TableHead>Status</TableHead>
                   <TableHead className="text-right">Actions</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {postmortems.map((postmortem) => (
+                {sortedPostmortems.map((postmortem) => (
                   <TableRow key={postmortem.id}>
                     <TableCell className="font-medium">
                       <Link href={`/postmortem/${postmortem.id}`} className="hover:text-primary">
@@ -112,7 +159,6 @@ export default function HistoryPage() {
                         {postmortem.severity}
                       </Badge>
                     </TableCell>
-                    <TableCell>{postmortem.duration ? formatDuration(postmortem.duration) : "-"}</TableCell>
                     <TableCell>
                       <Badge className={statusColor[postmortem.status] || ""}>
                         {postmortem.status}
@@ -128,7 +174,7 @@ export default function HistoryPage() {
               </TableBody>
             </Table>
 
-            {postmortems.length === 0 && (
+            {sortedPostmortems.length === 0 && (
               <div className="text-center py-12 text-muted-foreground">
                 {search ? "No postmortems found matching your search." : "No postmortems yet. Create your first one!"}
               </div>
