@@ -11,8 +11,7 @@ import { api } from "@/services/api"
 import { Postmortem } from "@/types/postmortem"
 import { formatDate } from "@/lib/utils"
 
-type SortField = "date" | "severity" | null
-type SortOrder = "asc" | "desc"
+type SortOrder = "asc" | "desc" | null
 
 const severityOrder: Record<string, number> = {
   SEV1: 1,
@@ -26,23 +25,34 @@ export default function HistoryPage() {
   const [postmortems, setPostmortems] = useState<Postmortem[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
-  const [sortField, setSortField] = useState<SortField>("date")
-  const [sortOrder, setSortOrder] = useState<SortOrder>("desc")
+  const [dateSortOrder, setDateSortOrder] = useState<SortOrder>("desc")
+  const [severitySortOrder, setSeveritySortOrder] = useState<SortOrder>(null)
 
-  const handleSort = (field: "date" | "severity") => {
-    if (sortField === field) {
-      setSortOrder(sortOrder === "asc" ? "desc" : "asc")
+  const handleDateSort = () => {
+    if (dateSortOrder === null) {
+      setDateSortOrder("desc")
+    } else if (dateSortOrder === "desc") {
+      setDateSortOrder("asc")
     } else {
-      setSortField(field)
-      setSortOrder("desc")
+      setDateSortOrder(null)
     }
   }
 
-  const SortIcon = ({ field }: { field: "date" | "severity" }) => {
-    if (sortField !== field) {
+  const handleSeveritySort = () => {
+    if (severitySortOrder === null) {
+      setSeveritySortOrder("desc")
+    } else if (severitySortOrder === "desc") {
+      setSeveritySortOrder("asc")
+    } else {
+      setSeveritySortOrder(null)
+    }
+  }
+
+  const SortIcon = ({ order }: { order: SortOrder }) => {
+    if (order === null) {
       return <span className="ml-1 text-muted-foreground/50">↕</span>
     }
-    return <span className="ml-1">{sortOrder === "asc" ? "↑" : "↓"}</span>
+    return <span className="ml-1">{order === "asc" ? "↑" : "↓"}</span>
   }
 
   useEffect(() => {
@@ -67,17 +77,23 @@ export default function HistoryPage() {
 
   const sortedPostmortems = useMemo(() => {
     return [...postmortems].sort((a, b) => {
-      let comparison = 0
-
-      if (sortField === "date") {
-        comparison = new Date(a.incidentDate).getTime() - new Date(b.incidentDate).getTime()
-      } else if (sortField === "severity") {
-        comparison = severityOrder[a.severity] - severityOrder[b.severity]
+      // Primary sort by date if enabled
+      if (dateSortOrder !== null) {
+        const dateComparison = new Date(a.incidentDate).getTime() - new Date(b.incidentDate).getTime()
+        const dateResult = dateSortOrder === "asc" ? dateComparison : -dateComparison
+        if (dateResult !== 0) return dateResult
       }
 
-      return sortOrder === "asc" ? comparison : -comparison
+      // Secondary sort by severity if enabled
+      if (severitySortOrder !== null) {
+        const severityComparison = severityOrder[a.severity] - severityOrder[b.severity]
+        const severityResult = severitySortOrder === "asc" ? severityComparison : -severityComparison
+        if (severityResult !== 0) return severityResult
+      }
+
+      return 0
     })
-  }, [postmortems, sortField, sortOrder])
+  }, [postmortems, dateSortOrder, severitySortOrder])
 
   const severityColor: Record<string, string> = {
     SEV1: "bg-red-500/20 text-red-400 border-red-500/50",
@@ -135,20 +151,20 @@ export default function HistoryPage() {
                   <TableHead>Title</TableHead>
                   <TableHead>
                     <button
-                      onClick={() => handleSort("date")}
+                      onClick={handleDateSort}
                       className="flex items-center hover:text-primary transition-colors"
                     >
                       Date
-                      <SortIcon field="date" />
+                      <SortIcon order={dateSortOrder} />
                     </button>
                   </TableHead>
                   <TableHead>
                     <button
-                      onClick={() => handleSort("severity")}
+                      onClick={handleSeveritySort}
                       className="flex items-center hover:text-primary transition-colors"
                     >
                       Severity
-                      <SortIcon field="severity" />
+                      <SortIcon order={severitySortOrder} />
                     </button>
                   </TableHead>
                   <TableHead>Status</TableHead>
