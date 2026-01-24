@@ -191,10 +191,10 @@ function generatePlainText(postmortem: Postmortem): string {
   lines.push(`**Status:** ${postmortem.status}`)
   lines.push(``)
   lines.push(`## Summary`)
-  lines.push(postmortem.summary)
+  lines.push(postmortem.summary || "N/A")
   lines.push(``)
   lines.push(`## Impact`)
-  lines.push(postmortem.impact)
+  lines.push(postmortem.impact || "N/A")
   lines.push(``)
   lines.push(`## Timeline`)
   postmortem.timeline.forEach((entry) => {
@@ -203,7 +203,7 @@ function generatePlainText(postmortem: Postmortem): string {
   })
   lines.push(``)
   lines.push(`## Root Cause`)
-  lines.push(postmortem.rootCause)
+  lines.push(postmortem.rootCause || "N/A")
   lines.push(``)
   lines.push(`## 5 Whys Analysis`)
   postmortem.whys.forEach((why, index) => {

@@ -33,24 +33,45 @@ export interface Postmortem {
   severity: Severity
   incidentDate: string
   status: PostmortemStatus
-  
+  duration: number
+
   // Inputs
   slackThread?: string
   logs?: string
   notes?: string
-  
+
   // Generated content
   summary?: string
-  timeline: TimelineEvent[]
+  timeline: TimelineEntry[]
   impact?: string
   rootCause?: string
-  whys: WhyItem[]
-  wentWell: string[]
-  wentPoorly: string[]
-  actionItems: ActionItem[]
-  
+  whys: WhyEntry[]
+  lessonsLearned: string[]
+  actionItems: ActionItemEntry[]
+
   createdAt: string
   updatedAt: string
+}
+
+// Simplified types used in mock data
+export interface TimelineEntry {
+  timestamp: string
+  event: string
+  actor: string
+}
+
+export interface WhyEntry {
+  question: string
+  answer: string
+}
+
+export interface ActionItemEntry {
+  id: string
+  description: string
+  owner: string
+  priority: Priority
+  status: string
+  dueDate?: string
 }
 
 export interface PostmortemInput {

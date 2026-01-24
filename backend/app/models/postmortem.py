@@ -1,74 +1,99 @@
-"""
-Postmortem SQLAlchemy model.
+"""Postmortem SQLAlchemy model."""
 
-TODO: Implement full model with relationships.
-"""
-
-from datetime import datetime
-from typing import TYPE_CHECKING
-
-from sqlalchemy import Column, String, Text, Date, DateTime, Enum, JSON
-from sqlalchemy.dialects.postgresql import UUID
-from sqlalchemy.orm import relationship
+from datetime import datetime, date
+from typing import List, Optional
 import uuid
 
-# Placeholder for Base - to be implemented with database session
-# from app.db.base import Base
+from sqlalchemy import String, Text, Date, DateTime, Integer, ForeignKey
+from sqlalchemy.dialects.postgresql import UUID, JSONB
+from sqlalchemy.orm import Mapped, mapped_column, relationship
+
+from app.db.base import Base
 
 
-class Postmortem:
-    """
-    Postmortem database model.
-
-    Columns:
-    - id: UUID primary key
-    - title: Incident title
-    - severity: SEV1-SEV4
-    - incident_date: Date of incident
-    - status: draft, generating, completed, failed
-    - slack_thread: Raw Slack input
-    - logs: Raw logs input
-    - notes: Additional notes
-    - summary: Generated executive summary
-    - impact: Generated impact assessment
-    - root_cause: Generated root cause
-    - five_whys: JSONB array of why/answer pairs
-    - went_well: JSONB array of strings
-    - went_poorly: JSONB array of strings
-    - generation_task_id: Celery task ID
-    - created_at: Creation timestamp
-    - updated_at: Last update timestamp
-    - deleted_at: Soft delete timestamp
-
-    Relationships:
-    - timeline_events: One-to-many
-    - action_items: One-to-many
-    """
+class Postmortem(Base):
+    """Postmortem database model."""
 
     __tablename__ = "postmortems"
 
-    # TODO: Implement with SQLAlchemy Base
-    # id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
-    # title = Column(String(255), nullable=False)
-    # severity = Column(Enum('SEV1', 'SEV2', 'SEV3', 'SEV4', name='severity'), nullable=False)
-    # incident_date = Column(Date, nullable=False)
-    # status = Column(Enum('draft', 'generating', 'completed', 'failed', name='status'), default='draft')
-    # slack_thread = Column(Text)
-    # logs = Column(Text)
-    # notes = Column(Text)
-    # summary = Column(Text)
-    # impact = Column(Text)
-    # root_cause = Column(Text)
-    # five_whys = Column(JSON, default=[])
-    # went_well = Column(JSON, default=[])
-    # went_poorly = Column(JSON, default=[])
-    # generation_task_id = Column(UUID(as_uuid=True))
-    # created_at = Column(DateTime, default=datetime.utcnow)
-    # updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
-    # deleted_at = Column(DateTime)
+    id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), primary_key=True, default=uuid.uuid4
+    )
+    title: Mapped[str] = mapped_column(String(255), nullable=False)
+    severity: Mapped[str] = mapped_column(String(10), nullable=False)  # SEV1-SEV4
+    incident_date: Mapped[date] = mapped_column(Date, nullable=False)
+    duration: Mapped[Optional[int]] = mapped_column(Integer, nullable=True)  # minutes
+    status: Mapped[str] = mapped_column(
+        String(20), default="draft"
+    )  # draft, generating, completed, failed
+
+    # Input fields
+    slack_thread: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    logs: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    notes: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+
+    # Generated content
+    summary: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    impact: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    root_cause: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    five_whys: Mapped[Optional[List[dict]]] = mapped_column(JSONB, default=list)
+    lessons_learned: Mapped[Optional[List[str]]] = mapped_column(JSONB, default=list)
+
+    # Celery task tracking
+    generation_task_id: Mapped[Optional[str]] = mapped_column(String(255), nullable=True)
+
+    # Timestamps
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime, default=datetime.utcnow, onupdate=datetime.utcnow
+    )
+    deleted_at: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True)
 
     # Relationships
-    # timeline_events = relationship("TimelineEvent", back_populates="postmortem", cascade="all, delete-orphan")
-    # action_items = relationship("ActionItem", back_populates="postmortem", cascade="all, delete-orphan")
+    timeline_events: Mapped[List["TimelineEvent"]] = relationship(
+        "TimelineEvent", back_populates="postmortem", cascade="all, delete-orphan"
+    )
+    action_items: Mapped[List["ActionItem"]] = relationship(
+        "ActionItem", back_populates="postmortem", cascade="all, delete-orphan"
+    )
 
-    pass
+
+class TimelineEvent(Base):
+    """Timeline event model."""
+
+    __tablename__ = "timeline_events"
+
+    id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), primary_key=True, default=uuid.uuid4
+    )
+    postmortem_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("postmortems.id", ondelete="CASCADE"), nullable=False
+    )
+    timestamp: Mapped[datetime] = mapped_column(DateTime, nullable=False)
+    event: Mapped[str] = mapped_column(Text, nullable=False)
+    actor: Mapped[Optional[str]] = mapped_column(String(255), nullable=True)
+    order: Mapped[int] = mapped_column(Integer, default=0)
+
+    # Relationship
+    postmortem: Mapped["Postmortem"] = relationship("Postmortem", back_populates="timeline_events")
+
+
+class ActionItem(Base):
+    """Action item model."""
+
+    __tablename__ = "action_items"
+
+    id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), primary_key=True, default=uuid.uuid4
+    )
+    postmortem_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("postmortems.id", ondelete="CASCADE"), nullable=False
+    )
+    description: Mapped[str] = mapped_column(Text, nullable=False)
+    owner: Mapped[Optional[str]] = mapped_column(String(255), nullable=True)
+    priority: Mapped[str] = mapped_column(String(20), default="medium")  # high, medium, low
+    status: Mapped[str] = mapped_column(String(20), default="pending")  # pending, in_progress, completed
+    due_date: Mapped[Optional[date]] = mapped_column(Date, nullable=True)
+
+    # Relationship
+    postmortem: Mapped["Postmortem"] = relationship("Postmortem", back_populates="action_items")
